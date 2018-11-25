@@ -380,7 +380,7 @@ public class Json extends JsonElement {
         return (elements.size() + elementLists.size()) > 0;
     }
 
-    public Json add(String key, String value) {
+    public Json addPair(String key, String value) {
         elements.put(key, new JsonElement(JsonElementType.JsonValue, value));
         return this;
     }
@@ -401,10 +401,10 @@ public class Json extends JsonElement {
     }
 
     public Json addList(String key) {
-        return addJson(key);
+        return addObject(key);
     }
 
-    public Json addJson(String key) {
+    public Json addObject(String key) {
         Json json = new Json();
         elements.put(key, json);
         return json;
@@ -418,7 +418,7 @@ public class Json extends JsonElement {
         return this;
     }
 
-    public Json addListAddJson() {
+    public Json addListObject() {
         if (!elementLists.containsKey("")) {
             elementLists.put("", new ArrayList<>());
         }
@@ -427,11 +427,11 @@ public class Json extends JsonElement {
         return json;
     }
 
-    public ArrayList<Json> getJsonList() {
-        return getJsonList("");
+    public ArrayList<Json> getObjectList() {
+        return getObjectList("");
     }
 
-    public ArrayList<Json> getJsonList(String key) {
+    public ArrayList<Json> getObjectList(String key) {
         ArrayList<Json> result = new ArrayList<>();
         if (elementLists.containsKey(key)) {
             for (JsonElement jsonElement : elementLists.get(key)) {

@@ -331,14 +331,14 @@ public class JsonTest {
     @org.junit.Test
     public void testBuild2() throws Exception {
         Json json = new Json();
-        json.add("A","B");
+        json.addPair("A","B");
         Assert.assertEquals("{\"A\":\"B\"}", json.toJson());
     }
 
     @org.junit.Test
     public void testBuild3() throws Exception {
         Json json = new Json();
-        json.addJson("C").add("A","B");
+        json.addObject("C").addPair("A","B");
         Assert.assertEquals("{\"C\":{\"A\":\"B\"}}", json.toJson());
     }
 
@@ -355,40 +355,49 @@ public class JsonTest {
     @org.junit.Test
     public void testBuild5() throws Exception {
         Json json = new Json();
-        json.addList("C").addListEntry("A").addListEntry("B");
+        Json list = json.addList("C");
+        list.addListEntry("A");
+        list.addListEntry("B");
         Assert.assertEquals("{\"C\":[\"A\",\"B\"]}", json.toJson());
     }
 
     @org.junit.Test
     public void testBuild6() throws Exception {
         Json json = new Json();
-        Json jsonList = json.addList("D").addListEntry("E");
-        jsonList.addListAddJson().addList("C").addListEntry("A").addListEntry("B");
-        jsonList.add("F", "G");
-        json.add("H","I");
-        Assert.assertEquals("{\"H\":\"I\",\"D\":{\"F\":\"G\",[\"E\",{\"C\":[\"A\",\"B\"]}]}}", json.toJson());
+        json.addList("C").addListEntry("A").addListEntry("B");
+        Assert.assertEquals("{\"C\":[\"A\",\"B\"]}", json.toJson());
     }
 
     @org.junit.Test
     public void testBuild7() throws Exception {
         Json json = new Json();
-        json.addListEntry("A").addListEntry("B");
-        Assert.assertEquals("[\"A\",\"B\"]", json.toJson());
-        Assert.assertEquals(0, json.getJsonList().size());
+        Json jsonList = json.addList("D").addListEntry("E");
+        jsonList.addListObject().addList("C").addListEntry("A").addListEntry("B");
+        jsonList.addPair("F", "G");
+        json.addPair("H","I");
+        Assert.assertEquals("{\"H\":\"I\",\"D\":{\"F\":\"G\",[\"E\",{\"C\":[\"A\",\"B\"]}]}}", json.toJson());
     }
 
     @org.junit.Test
     public void testBuild8() throws Exception {
         Json json = new Json();
-        json.addListEntry("A").addListAddJson();
-        Assert.assertEquals("[\"A\",{}]", json.toJson());
-        Assert.assertEquals(1, json.getJsonList().size());
+        json.addListEntry("A").addListEntry("B");
+        Assert.assertEquals("[\"A\",\"B\"]", json.toJson());
+        Assert.assertEquals(0, json.getObjectList().size());
     }
 
     @org.junit.Test
     public void testBuild9() throws Exception {
         Json json = new Json();
-        json.addListAddJson();
+        json.addListEntry("A").addListObject();
+        Assert.assertEquals("[\"A\",{}]", json.toJson());
+        Assert.assertEquals(1, json.getObjectList().size());
+    }
+
+    @org.junit.Test
+    public void testBuild10() throws Exception {
+        Json json = new Json();
+        json.addListObject();
         Assert.assertEquals("[{}]", json.toJson());
     }
 
@@ -407,7 +416,7 @@ public class JsonTest {
     @org.junit.Test
     public void testEncode2() throws Exception {
         Json json = new Json();
-        json.add("A", "{[ABC]}");
+        json.addPair("A", "{[ABC]}");
         Assert.assertEquals("{\"A\":\"{[ABC]}\"}", json.toJson());
 
         Assert.assertEquals("{\\\"A\\\":\\\"{[ABC]}\\\"}", json.toJsonEscaped());
@@ -418,7 +427,7 @@ public class JsonTest {
         Json json = new Json();
         Assert.assertFalse("Should not have any", json.hasElements());
         Assert.assertFalse("Should not have any", json.containsKey("A"));
-        json.add("A","B");
+        json.addPair("A","B");
         Assert.assertTrue("Should have any", json.hasElements());
         Assert.assertTrue("Should have any", json.containsKey("A"));
         Assert.assertEquals("", json.get("C"));
