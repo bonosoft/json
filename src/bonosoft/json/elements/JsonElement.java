@@ -108,7 +108,7 @@ public class JsonElement {
     }
 
     public boolean isNative() {
-       return content.equalsIgnoreCase("true") || content.equalsIgnoreCase("false") || content.equalsIgnoreCase("null");
+        return content.equalsIgnoreCase("true") || content.equalsIgnoreCase("false") || content.equalsIgnoreCase("null");
     }
 
     public boolean isNumber() {

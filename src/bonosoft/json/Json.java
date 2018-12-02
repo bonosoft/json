@@ -273,6 +273,17 @@ public class Json extends JsonElement {
         return "";
     }
 
+    public Json getObject(String key) {
+        if (elements.containsKey(key)) {
+            JsonElement jsonElement = elements.get(key);
+            if (jsonElement instanceof Json) {
+                return (Json) jsonElement;
+            }
+        }
+        return null;
+    }
+
+
     public int getInt(String key) {
         if (elements.containsKey(key)) {
             JsonElement jsonElement = elements.get(key);
