@@ -27,9 +27,12 @@ package bonosoft.json;
 
 import bonosoft.json.elements.JsonElement;
 import bonosoft.json.elements.JsonElementType;
+import bonosoft.json.helper.JsonItem;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+
+import static bonosoft.json.helper.JsonItem.isNotEmpty;
 
 /**
  * by bn on 23/11/2018.
@@ -54,39 +57,44 @@ public class Json extends JsonElement {
                     char nch = chars[index];
                     switch (nch) {
                         case '"':
-                            builder.append("\\\"");
+                            // builder.append("\\\"");
+                            builder.append("\"");
                             break;
 
                         case '\\':
-                            builder.append("\\\\");
+                            // builder.append("\\\\");
+                            builder.append("\\");
                             break;
 
                         case '/':
-                            builder.append("\\/");
+                            //builder.append("\\/");
+                            builder.append("/");
                             break;
 
                         case 'b':
-                            builder.append("\\b");
+                            builder.append("\b");
                             break;
 
                         case 'f':
-                            builder.append("\\f");
+                            builder.append("\f");
                             break;
 
                         case 'n':
-                            builder.append("\\n");
+                            builder.append("\n");
                             break;
 
                         case 'r':
-                            builder.append("\\r");
+                            builder.append("\r");
                             break;
 
                         case 't':
-                            builder.append("\\t");
+                            builder.append("\t");
                             break;
 
                         case 'u':
-                            builder.append("\\u").append(chars[1 + index]).append(chars[2 + index]).append(chars[3 + index]).append(chars[4 + index]);
+                            StringBuilder buf = new StringBuilder();
+                            buf.append(chars[1 + index]).append(chars[2 + index]).append(chars[3 + index]).append(chars[4 + index]);
+                            builder.append(String.valueOf(Character.toChars(Integer.parseInt(buf.toString(), 16))));
                             index += 4;
                             break;
 
@@ -187,7 +195,7 @@ public class Json extends JsonElement {
         JsonElement entry;
         List<JsonElement> arrayElements = new ArrayList<>();
         do {
-            if (parts.size() == 0) { break; }
+            if (parts.size() == 0) {break;}
             entry = parts.poll();
 
             if (entry.isStart()) {
@@ -223,7 +231,7 @@ public class Json extends JsonElement {
                 entry = parts.poll();
 
                 if (entry.isPair()) {
-                    if (parts.size() == 0) { return; }
+                    if (parts.size() == 0) {return;}
                     entry = parts.poll();
 
                     if (entry.isKey()) {
@@ -237,7 +245,7 @@ public class Json extends JsonElement {
                     } else if (entry.isArrayStart()) {
                         Json json = new Json();
                         elements.put(pairKey.content, json);
-                        json.elementLists.put("", buildArray(parts));
+                        json.elementLists.put(pairKey.content, buildArray(parts));
                     } else {
                         // somethings wrong
                     }
@@ -266,11 +274,16 @@ public class Json extends JsonElement {
     }
 
     public String get(String key) {
+        return get(key, "");
+    }
+    public String get(String key, String defaultValue) {
         if (elements.containsKey(key)) {
             JsonElement jsonElement = elements.get(key);
-            return jsonElement.content;
+            String value = jsonElement.content;
+            if (value!=null && value.equalsIgnoreCase("null")) return defaultValue;
+            return value;
         }
-        return "";
+        return defaultValue;
     }
 
     public Json getObject(String key) {
@@ -285,18 +298,44 @@ public class Json extends JsonElement {
 
 
     public int getInt(String key) {
+        return getInt(key, 0);
+    }
+
+    public int getInt(String key, int defaultValue) {
         if (elements.containsKey(key)) {
             JsonElement jsonElement = elements.get(key);
             if (jsonElement.content != null) {
                 String str = jsonElement.content;
+                if (str==null) return defaultValue;
                 if (str.endsWith("%")) {
                     str = str.substring(0, str.length() - 1);
                 }
-                return Integer.parseInt(str);
+                if (str.equalsIgnoreCase("null")) return defaultValue;
+                try {
+                    return Integer.parseInt(str);
+                } catch (Exception e) {
+                    // return default
+                }
             }
         }
-        return 0;
+        return defaultValue;
     }
+
+    public boolean getBoolean(String key) {
+        return getBoolean(key, false);
+    }
+
+    public boolean getBoolean(String key, boolean defaultValue) {
+        if (elements.containsKey(key)) {
+            JsonElement jsonElement = elements.get(key);
+            if (jsonElement.content != null) {
+                String str = jsonElement.content;
+                return Boolean.parseBoolean(str) || str.equalsIgnoreCase("1");
+            }
+        }
+        return defaultValue;
+    }
+
 
     public String getDecoded(String key) {
         if (elements.containsKey(key)) {
@@ -319,6 +358,7 @@ public class Json extends JsonElement {
         return builder.toString();
     }
 
+
     public String toJson() {
         StringBuilder builder = new StringBuilder();
 
@@ -333,7 +373,7 @@ public class Json extends JsonElement {
             for (Map.Entry<String, JsonElement> entry : elements.entrySet()) {
                 builder.append(listSeparator);
                 if (entry.getKey().length() > 0) {
-                    builder.append("\"").append(entry.getKey()).append("\":").append(entry.getValue().toElementJson());
+                    builder.append("\"").append(escape(entry.getKey())).append("\":").append(entry.getValue().toElementJson());
                 } else {
                     builder.append(entry.getValue().toElementJson());
                 }
@@ -344,14 +384,20 @@ public class Json extends JsonElement {
 
         for (Map.Entry<String, List<JsonElement>> entry : elementLists.entrySet()) {
             builder.append(separator);
-            if (entry.getKey().length() > 0) {
-                boolean append = false;
+            if (elementLists.size() > 1) {
                 if (builder.length() == 0) {
                     builder.append("{");
-                    append = true;
+                    overAppend = true;
+                }
+            }
+
+            if (entry.getKey().length() > 0) {
+                if (builder.length() == 0) {
+                    builder.append("{");
+                    overAppend = true;
                 }
 
-                builder.append("\"").append(entry.getKey()).append("\":[");
+                builder.append("\"").append(escape(entry.getKey())).append("\":[");
                 String listSeparator = "";
                 for (JsonElement jsonElement : entry.getValue()) {
                     builder.append(listSeparator);
@@ -359,9 +405,6 @@ public class Json extends JsonElement {
                     listSeparator = ",";
                 }
                 builder.append("]");
-                if (append) {
-                    builder.append("}");
-                }
             } else {
                 builder.append("[");
                 String listSeparator = "";
@@ -392,7 +435,17 @@ public class Json extends JsonElement {
     }
 
     public Json addPair(String key, String value) {
-        elements.put(key, new JsonElement(JsonElementType.JsonValue, value));
+        elements.put(key, new JsonElement(JsonElementType.JsonValue, value, true));
+        return this;
+    }
+
+    public Json addPair(String key, int value) {
+        elements.put(key, new JsonElement(JsonElementType.JsonValue, String.valueOf(value)));
+        return this;
+    }
+
+    public Json addPair(String key, boolean value) {
+        elements.put(key, new JsonElement(JsonElementType.JsonValue, value ? "true" : "false"));
         return this;
     }
 
@@ -405,8 +458,24 @@ public class Json extends JsonElement {
     public Json addList(String key, ArrayList<String> value) {
         ArrayList<JsonElement> list = new ArrayList<>();
         for (String val : value) {
-            list.add(new JsonElement(JsonElementType.JsonValue, val));
+            list.add(new JsonElement(JsonElementType.JsonValue, val, true));
         }
+        elementLists.put(key, list);
+        return this;
+    }
+
+    public Json addIntList(String key, ArrayList<Integer> value) {
+        ArrayList<JsonElement> list = new ArrayList<>();
+        for (Integer val : value) {
+            list.add(new JsonElement(JsonElementType.JsonValue, String.valueOf(val)));
+        }
+        elementLists.put(key, list);
+        return this;
+    }
+
+    public Json addJsonList(String key, ArrayList<Json> value) {
+        ArrayList<JsonElement> list = new ArrayList<>();
+        list.addAll(value);
         elementLists.put(key, list);
         return this;
     }
@@ -425,7 +494,23 @@ public class Json extends JsonElement {
         if (!elementLists.containsKey("")) {
             elementLists.put("", new ArrayList<>());
         }
-        elementLists.get("").add(new JsonElement(JsonElementType.JsonValue, val));
+        elementLists.get("").add(new JsonElement(JsonElementType.JsonValue, val, true));
+        return this;
+    }
+
+    public Json addListEntry(int val) {
+        if (!elementLists.containsKey("")) {
+            elementLists.put("", new ArrayList<>());
+        }
+        elementLists.get("").add(new JsonElement(JsonElementType.JsonValue, String.valueOf(val)));
+        return this;
+    }
+
+    public Json addListEntry(Json val) {
+        if (!elementLists.containsKey("")) {
+            elementLists.put("", new ArrayList<>());
+        }
+        elementLists.get("").add(val);
         return this;
     }
 
@@ -444,10 +529,34 @@ public class Json extends JsonElement {
 
     public ArrayList<Json> getObjectList(String key) {
         ArrayList<Json> result = new ArrayList<>();
+        if (elements.containsKey(key)) {
+            JsonElement jsonList = elements.get(key);
+            if (jsonList.jsonType == JsonElementType.Json) {
+                for (JsonElement jsonElement : ((Json)jsonList).elementLists.get(key)) {
+                    if (jsonElement.jsonType == JsonElementType.Json) {
+                        result.add((Json) jsonElement);
+                    } else if (jsonElement.jsonType == JsonElementType.JsonKey || jsonElement.jsonType == JsonElementType.JsonValue) {
+                        Json json = new Json();
+                        json.elements.put("", jsonElement);
+                        result.add(json);
+                    }
+                }
+            }
+        }
         if (elementLists.containsKey(key)) {
             for (JsonElement jsonElement : elementLists.get(key)) {
                 if (jsonElement.jsonType == JsonElementType.Json) {
                     result.add((Json) jsonElement);
+                }
+            }
+            return result;
+        }
+        if (key.trim().length()==0 && elementLists.size()==1) {
+            for(List<JsonElement> lists : elementLists.values()) {
+                for (JsonElement jsonElement : lists) {
+                    if (jsonElement.jsonType == JsonElementType.Json) {
+                        result.add((Json) jsonElement);
+                    }
                 }
             }
         }
@@ -459,13 +568,35 @@ public class Json extends JsonElement {
     }
 
     public boolean containsListKey(String key) {
+        if (elements.containsKey(key)) {
+            JsonElement element = elements.get(key);
+            if (element.jsonType == JsonElementType.Json) {
+                Json elementJson = (Json) element;
+                if (elementJson.elementLists.containsKey(key)) {
+                    return true;
+                }
+            }
+        }
         return elementLists.containsKey(key);
     }
 
     public ArrayList<String> getList(String key) {
         ArrayList<String> result = new ArrayList<>();
+        List<JsonElement> listElements = null;
+        if (elements.containsKey(key)) {
+            JsonElement element = elements.get(key);
+            if (element.jsonType == JsonElementType.Json) {
+                Json elementJson = (Json) element;
+                if (elementJson.elementLists.containsKey(key)) {
+                    listElements = elementJson.elementLists.get(key);
+                }
+            }
+        }
         if (elementLists.containsKey(key)) {
-            for (JsonElement jsonElement : elementLists.get(key)) {
+            listElements = elementLists.get(key);
+        }
+        if (listElements!=null) {
+            for (JsonElement jsonElement : listElements) {
                 if (jsonElement.isValue() || jsonElement.isKey()) {
                     result.add(jsonElement.content);
                 }
@@ -473,4 +604,69 @@ public class Json extends JsonElement {
         }
         return result;
     }
+
+    public static Json toJson(Hashtable<String, String> texts) {
+        Json json = new Json();
+        JsonItem jsonItem = new JsonItem("");
+        for (Map.Entry<String, String> entry : texts.entrySet()) {
+            jsonItem.add(entry.getKey(), entry.getValue());
+        }
+        jsonItem.publish(json);
+        return json;
+    }
+
+    public Hashtable<String, String> toKeyValueList() {
+        Hashtable<String, String> texts = new Hashtable<>();
+        parseJsonToList("", this, texts);
+        return texts;
+    }
+
+    private void parseJsonToList(String preKey, Json contentList, Hashtable<String, String> texts) {
+        for (Map.Entry<String, JsonElement> entity : contentList.elements.entrySet()) {
+            switch (entity.getValue().jsonType) {
+                case JsonKey:
+                case JsonValue:
+                    texts.put(addKey(preKey, entity.getKey()), entity.getValue().content);
+                    break;
+
+                case Json:
+                    parseJsonToList(addKey(preKey, entity.getKey()), (Json) entity.getValue(), texts);
+                    break;
+            }
+        }
+        for (Map.Entry<String, List<JsonElement>> entity : contentList.elementLists.entrySet()) {
+            String key = addKey(preKey, entity.getKey());
+            int listIndex = 1;
+            for (JsonElement element : entity.getValue()) {
+                switch (element.jsonType) {
+                    case JsonKey:
+                    case JsonValue:
+                        texts.put(key + ":" + listIndex, element.content);
+                        break;
+
+                    case Json:
+                        parseJsonToList(key + ":" + listIndex, (Json) element, texts);
+                        break;
+                }
+                listIndex++;
+            }
+        }
+    }
+
+    private String addKey(String preKey, String subKey) {
+        if (isNotEmpty(subKey)) {
+            String key = preKey;
+            if (isNotEmpty(subKey)) {
+                if (isNotEmpty(key)) {
+                    key += ".";
+                }
+                return key + subKey;
+            }
+            return key;
+        } else {
+            return preKey;
+        }
+    }
+
+
 }

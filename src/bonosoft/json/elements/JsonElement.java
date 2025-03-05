@@ -97,14 +97,43 @@ public class JsonElement {
                             return content;
                         }
                     }
-                    return "\"" + content + "\"";
+                    return "\"" + escape(content) + "\"";
+                } else {
+                    return "null";
                 }
-                return "";
 
             case Json:
                 return toJson();
         }
         return "";
+    }
+
+    public String escape(String content) {
+        StringBuilder builder = new StringBuilder();
+        for (char ch : content.toCharArray()) {
+            if (ch == '"') {
+                builder.append('\\').append(ch);
+            } else if (ch == '\\') {
+                    builder.append('\\').append(ch);
+            // } else if (ch == '/') {
+                // builder.append('\\').append(ch);
+            } else if (ch == '\b') {
+                builder.append('\\').append("b");
+            } else if (ch == '\f') {
+                builder.append('\\').append("f");
+            } else if (ch == '\n') {
+                builder.append('\\').append("n");
+            } else if (ch == '\r') {
+                builder.append('\\').append("r");
+            } else if (ch == '\t') {
+                builder.append('\\').append("t");
+            } else if (ch == '\b') {
+                builder.append('\\').append("b");
+            } else {
+                builder.append(ch);
+            }
+        }
+        return builder.toString();
     }
 
     public boolean isNative() {
